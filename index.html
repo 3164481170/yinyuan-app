@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>姻缘测算 · 八字合婚 × 紫微斗数</title>
+<script src="lib/lunar.js"></script>
+<script src="lib/iztro.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f3ea;
+    --card: #fffdf7;
+    --ink: #2c2a26;
+    --ink-soft: #6b675e;
+    --accent: #b03a2e;
+    --accent-soft: #f3e3e0;
+    --gold: #c9a227;
+    --line: #e6dfd0;
+    --good: #2e7d32;
+    --bad: #b03a2e;
+    --mid: #b8860b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .container { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
+  header { text-align: center; padding: 20px 0 8px; }
+  header h1 { font-size: 28px; letter-spacing: 6px; color: var(--accent); font-weight: 700; }
+  header .sub { color: var(--ink-soft); font-size: 13px; margin-top: 4px; letter-spacing: 2px; }
+  .tabs { display: flex; justify-content: center; gap: 8px; margin: 20px 0 24px; }
+  .tab-btn {
+    padding: 9px 26px; border: 1px solid var(--line); background: var(--card);
+    border-radius: 20px; cursor: pointer; font-size: 15px; color: var(--ink-soft);
+    transition: all .2s;
+  }
+  .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 22px; margin-bottom: 16px;
+  }
+  .card h3 { font-size: 16px; color: var(--accent); margin-bottom: 12px; letter-spacing: 2px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  label { font-size: 12px; color: var(--ink-soft); display: block; margin-bottom: 3px; }
+  input, select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    font-size: 14px; background: #fff; color: var(--ink); font-family: inherit;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--gold); }
+  .btn {
+    display: inline-block; padding: 11px 34px; background: var(--accent); color: #fff;
+    border: none; border-radius: 24px; font-size: 15px; cursor: pointer; letter-spacing: 3px;
+    transition: opacity .2s;
+  }
+  .btn:hover { opacity: .88; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent; color: var(--accent); border: 1px solid var(--accent);
+    padding: 7px 20px; font-size: 13px;
+  }
+  .btn-row { text-align: center; margin: 18px 0 26px; }
+  .score-wrap { text-align: center; padding: 8px 0 4px; }
+  .score-num { font-size: 56px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+  .score-num small { font-size: 20px; color: var(--ink-soft); }
+  .score-label { font-size: 18px; letter-spacing: 4px; margin-top: 2px; }
+  .score-bar { height: 10px; background: var(--accent-soft); border-radius: 6px; overflow: hidden; margin: 14px auto 6px; max-width: 420px; }
+  .score-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--accent)); border-radius: 6px; transition: width .8s ease; }
+  table.detail { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.detail th, table.detail td { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; }
+  table.detail th { color: var(--ink-soft); font-weight: 600; background: #faf7ee; }
+  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .pill { display: inline-block; padding: 1px 10px; border-radius: 10px; font-size: 12px; background: var(--accent-soft); color: var(--accent); margin: 2px 3px 2px 0; }
+  .pill.g { background: #e3efe3; color: var(--good); }
+  .pill.n { background: #f0e6d8; color: var(--mid); }
+  .bazi-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  .bazi-col { flex: 1; min-width: 72px; text-align: center; border: 1px solid var(--line); border-radius: 8px; padding: 8px 4px; background: #faf7ee; }
+  .bazi-col .tag { font-size: 11px; color: var(--ink-soft); }
+  .bazi-col .gz { font-size: 19px; font-weight: 700; margin: 2px 0; }
+  .bazi-col .ny { font-size: 11px; color: var(--mid); }
+  .llm-output { white-space: pre-wrap; font-size: 14px; min-height: 40px; }
+  .llm-output h2, .llm-output h3 { color: var(--accent); margin: 14px 0 6px; font-size: 16px; }
+  .llm-output ul { padding-left: 22px; margin: 6px 0; }
+  .llm-output li { margin: 3px 0; }
+  .llm-output strong { color: var(--accent); }
+  .cursor { display: inline-block; width: 8px; height: 16px; background: var(--accent); vertical-align: -2px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .status { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+  .status.err { color: var(--bad); }
+  .disclaimer { text-align: center; font-size: 12px; color: var(--ink-soft); margin-top: 30px; letter-spacing: 1px; }
+  .hint { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+  .section-title { font-size: 15px; font-weight: 700; color: var(--ink); margin: 16px 0 6px; }
+  .kv { font-size: 13px; margin: 3px 0; }
+  .kv b { color: var(--accent); }
+  #selftest { font-family: Consolas, monospace; font-size: 12px; background: #faf7ee; padding: 10px; border-radius: 8px; white-space: pre-wrap; word-break: break-all; display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>姻 缘 测 算</h1>
+    <div class="sub">八字排盘 · 紫微斗数 · 合婚配对 · AI 解读</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="match">双人合婚</button>
+    <button class="tab-btn" data-tab="single">单人姻缘</button>
+    <button class="tab-btn" data-tab="settings">API 设置</button>
+  </div>
+
+  <!-- ============ 双人合婚 ============ -->
+  <div class="panel active" id="panel-match">
+    <div class="card">
+      <h3>甲方</h3>
+      <div class="form-grid">
+        <div><label>姓名（可选）</label><input id="m-a-name" placeholder="TA"></div>
+        <div><label>性别</label><select id="m-a-gender"><option value="男">男</option><option value="女">女</option></select></div>
+        <div><label>公历年</label><input id="m-a-year" type="number" min="1900" max="2100" value="1995"></div>
+        <div><label>月</label><input id="m-a-month" type="number" min="1" max="12" value="8"></div>
+        <div><label>日</label><input id="m-a-day" type="number" min="1" max="31" value="15"></div>
+        <div><label>时辰（24h）</label><select id="m-a-hour"></select></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>乙方</h3>
+      <div class="form-grid">
+        <div><label>姓名（可选）</label><input id="m-b-name" placeholder="TA"></div>
+        <div><label>性别</label><select id="m-b-gender"><option value="女">女</option><option value="男">男</option></select></div>
+        <div><label>公历年</label><input id="m-b-year" type="number" min="1900" max="2100" value="1997"></div>
+        <div><label>月</label><input id="m-b-month" type="number" min="1" max="12" value="3"></div>
+        <div><label>日</label><input id="m-b-day" type="number" min="1" max="31" value="8"></div>
+        <div><label>时辰（24h）</label><select id="m-b-hour"></select></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="btn-match">开 始 测 算</button>
+    </div>
+    <div id="match-result"></div>
+  </div>
+
+  <!-- ============ 单人姻缘 ============ -->
+  <div class="panel" id="panel-single">
+    <div class="card">
+      <h3>本人信息</h3>
+      <div class="form-grid">
+        <div><label>姓名（可选）</label><input id="s-name" placeholder="你的称呼"></div>
+        <div><label>性别</label><select id="s-gender"><option value="男">男</option><option value="女">女</option></select></div>
+        <div><label>公历年</label><input id="s-year" type="number" min="1900" max="2100" value="1995"></div>
+        <div><label>月</label><input id="s-month" type="number" min="1" max="12" value="8"></div>
+        <div><label>日</label><input id="s-day" type="number" min="1" max="31" value="15"></div>
+        <div><label>时辰（24h）</label><select id="s-hour"></select></div>
+      </div>
+      <div class="hint">时辰影响时柱与紫微命盘，尽量填写准确；不知道可选「时辰未知」。</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="btn-single">开 始 测 算</button>
+    </div>
+    <div id="single-result"></div>
+  </div>
+
+  <!-- ============ API 设置 ============ -->
+  <div class="panel" id="panel-settings">
+    <div class="card">
+      <h3>大模型 API（OpenAI 兼容格式）</h3>
+      <div><label>API 地址（Base URL，填到 /v1 即可）</label>
+        <input id="cfg-url" placeholder="https://api.openai.com/v1"></div>
+      <div style="margin-top:10px"><label>API Key</label>
+        <input id="cfg-key" type="password" placeholder="sk-..."></div>
+      <div style="margin-top:10px"><label>模型名称</label>
+        <input id="cfg-model" placeholder="deepseek-chat / gpt-4o-mini / ..."></div>
+      <div class="hint">配置保存在浏览器 localStorage，仅本机使用，不会上传。兼容 DeepSeek、智谱、Kimi、Ollama 等一切 OpenAI 格式接口。</div>
+      <div class="btn-row" style="text-align:left">
+        <button class="btn btn-ghost" id="btn-save">保 存</button>
+        <button class="btn btn-ghost" id="btn-test" style="margin-left:10px">测试连接</button>
+        <span class="status" id="cfg-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <pre id="selftest"></pre>
+  <div class="disclaimer">※ 命理测算仅供娱乐参考，缘分仍需真心经营 ※</div>
+</div>
+
+<script>
+/* ================================================================
+ *  引擎：确定性排盘与打分（可独立测试，window.__engine 暴露纯函数）
+ * ================================================================ */
+var Engine = (function () {
+  var GAN_WUXING = { '甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水' };
+  var ZHI_WUXING = { '子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水' };
+  var GAN_HE = { '甲':'己','己':'甲','乙':'庚','庚':'乙','丙':'辛','辛':'丙','丁':'壬','壬':'丁','戊':'癸','癸':'戊' };
+  var ZHI_LIUHE = { '子':'丑','丑':'子','寅':'亥','亥':'寅','卯':'戌','戌':'卯','辰':'酉','酉':'辰','巳':'申','申':'巳','午':'未','未':'午' };
+  var ZHI_CHONG = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+  var ZHI_HAI = { '子':'未','未':'子','丑':'午','午':'丑','寅':'巳','巳':'寅','卯':'辰','辰':'卯','申':'亥','亥':'申','酉':'戌','戌':'酉' };
+  var SANHE_SETS = [ ['申','子','辰'], ['亥','卯','未'], ['寅','午','戌'], ['巳','酉','丑'] ];
+  var XING_PAIRS = [ ['子','卯'], ['卯','子'] ];
+  var ZHI_ORDER = '子丑寅卯辰巳午未申酉戌亥';
+  // 桃花（咸池）：申子辰见酉、寅午戌见卯、巳酉丑见午、亥卯未见子
+  var TAOHUA = { '申':'酉','子':'酉','辰':'酉','寅':'卯','午':'卯','戌':'卯','巳':'午','酉':'午','丑':'午','亥':'子','卯':'子','未':'子' };
+  var SHENGXIAO = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+
+  function zhiIdx(z) { return ZHI_ORDER.indexOf(z); }
+  function sameSet(a, b) {
+    return SANHE_SETS.some(function (s) { return s.indexOf(a) > -1 && s.indexOf(b) > -1; });
+  }
+  // 地支关系描述（六合/三合/六冲/相刑/相害/相同/无）
+  function zhiRelation(a, b) {
+    if (a === b) return { key: 'same', label: '相同', score: 0 };
+    if (ZHI_LIUHE[a] === b) return { key: 'liuhe', label: '六合', score: 1 };
+    if (sameSet(a, b)) return { key: 'sanhe', label: '三合', score: 1 };
+    if (ZHI_CHONG[a] === b) return { key: 'chong', label: '六冲', score: -1 };
+    if (XING_PAIRS.some(function (p) { return p[0] === a && p[1] === b; })) return { key: 'xing', label: '相刑', score: -1 };
+    if (ZHI_HAI[a] === b) return { key: 'hai', label: '相害', score: -1 };
+    return { key: 'none', label: '无特殊', score: 0 };
+  }
+  // 五行生克：a 对 b（a生b / a克b / b克a / b生a / 比和）
+  function wuxingRelation(a, b) {
+    if (a === b) return '比和';
+    var sheng = { '木':'火','火':'土','土':'金','金':'水','水':'木' };
+    var ke = { '木':'土','土':'水','水':'火','火':'金','金':'木' };
+    if (sheng[a] === b) return '我生对方';
+    if (sheng[b] === a) return '对方生我';
+    if (ke[a] === b) return '我克对方';
+    if (ke[b] === a) return '对方克我';
+    return '';
+  }
+
+  // 排一个人的八字盘
+  function paipan(y, m, d, hour24, gender) {
+    var hourKnown = (hour24 >= 0);
+    var h = hourKnown ? hour24 : 12;
+    var solar = Solar.fromYmdHms(y, m, d, h, 0, 0, 0);
+    var lunar = solar.getLunar();
+    var ec = lunar.getEightChar();
+    var gz = { year: ec.getYear(), month: ec.getMonth(), day: ec.getDay(), time: ec.getTime() };
+    var ny = { year: ec.getYearNaYin(), month: ec.getMonthNaYin(), day: ec.getDayNaYin(), time: ec.getTimeNaYin() };
+    var dayGan = gz.day.charAt(0), dayZhi = gz.day.charAt(1);
+    var yearZhi = gz.year.charAt(1);
+    var pillars = ['year', 'month', 'day', 'time'];
+    var pillarCN = { year: '年', month: '月', day: '日', time: '时' };
+    var otherZhi = pillars.map(function (k) { return gz[k].charAt(1); });
+    var otherGan = pillars.map(function (k) { return gz[k].charAt(0); });
+
+    // 桃花：以年支、日支起，查其余地支
+    var taohua = [];
+    [yearZhi, dayZhi].forEach(function (qi) {
+      var hua = TAOHUA[qi];
+      otherZhi.forEach(function (z) { if (z === hua && taohua.indexOf(hua) < 0) taohua.push(hua); });
+    });
+    // 红鸾 / 天喜（以年支起）
+    var hongluan = ZHI_ORDER.charAt((3 - zhiIdx(yearZhi) + 12) % 12);
+    var tianxi = ZHI_ORDER.charAt((3 - zhiIdx(yearZhi) + 12 + 6) % 12);
+
+    // 配偶星：男看财星（日主所克），女看官星（克日主）
+    var dayWX = GAN_WUXING[dayGan];
+    var ke = { '木':'土','土':'水','水':'火','火':'金','金':'木' };
+    var targetWX = (gender === '男') ? ke[dayWX] : Object.keys(ke).find(function (k) { return ke[k] === dayWX; });
+    var spouseStarHits = [];
+    otherGan.forEach(function (g, i) {
+      if (GAN_WUXING[g] === targetWX) spouseStarHits.push(pillarCN[pillars[i]] + '干·' + g);
+    });
+    otherZhi.forEach(function (z, i) {
+      if (ZHI_WUXING[z] === targetWX && pillars[i] !== 'day') spouseStarHits.push(pillarCN[pillars[i]] + '支·' + z);
+    });
+
+    return {
+      gender: gender, hourKnown: hourKnown,
+      solar: y + '-' + m + '-' + d,
+      gz: gz, naYin: ny,
+      zodiac: lunar.getYearShengXiao(),
+      dayGan: dayGan, dayZhi: dayZhi, yearZhi: yearZhi,
+      dayWuxing: GAN_WUXING[dayGan],
+      taohua: taohua, hongluan: hongluan, tianxi: tianxi,
+      spouseStar: { gender: gender, wx: targetWX, hits: spouseStarHits }
+    };
+  }
+
+  // 紫微夫妻宫
+  function ziweiSpouse(y, m, d, hour24, gender) {
+    var h = (hour24 >= 0) ? hour24 : 12;
+    var timeIndex = Math.floor((h + 1) / 2) % 12;
+    var r = self.iztro.astro.bySolar(y + '-' + m + '-' + d, timeIndex, gender, true, 'zh-CN');
+    var sp = r.palaces.find(function (p) { return p.name === '夫妻'; });
+    return {
+      soul: r.soul, body: r.body, fiveElements: r.fiveElementsClass,
+      spouse: {
+        major: sp.majorStars.map(function (s) { return s.name + (s.brightness ? '(' + s.brightness + ')' : ''); }),
+        minor: sp.minorStars.map(function (s) { return s.name; }),
+        adjective: sp.adjectiveStars ? sp.adjectiveStars.map(function (s) { return s.name; }) : []
+      }
+    };
+  }
+
+  /* ---------- 合婚打分 ---------- */
+  function matchScore(pA, pB) {
+    var items = [];
+    function add(cat, desc, s) { items.push({ cat: cat, desc: desc, score: s }); }
+
+    // 1. 属相（年支）
+    var rel1 = zhiRelation(pA.yearZhi, pB.yearZhi);
+    var s1 = { 'liuhe': 25, 'sanhe': 20, 'same': 0, 'none': 0, 'chong': -20, 'xing': -15, 'hai': -10 }[rel1.key];
+    add('生肖年支', pA.zodiac + '(' + pA.yearZhi + ') 与 ' + pB.zodiac + '(' + pB.yearZhi + ')：' + rel1.label, s1);
+
+    // 2. 日主五行
+    var rel2 = wuxingRelation(pA.dayWuxing, pB.dayWuxing);
+    var s2 = { '我生对方': 10, '对方生我': 10, '比和': 12, '我克对方': -8, '对方克我': -8 }[rel2] || 0;
+    add('日主五行', pA.dayGan + '(' + pA.dayWuxing + ') 与 ' + pB.dayGan + '(' + pB.dayWuxing + ')：' + rel2, s2);
+
+    // 3. 日柱天干五合
+    if (GAN_HE[pA.dayGan] === pB.dayGan) add('日干五合', pA.dayGan + pB.dayGan + ' 天干五合（甲己/乙庚/丙辛/丁壬/戊癸）', 15);
+
+    // 4. 日支（夫妻宫）关系
+    var rel4 = zhiRelation(pA.dayZhi, pB.dayZhi);
+    var s4 = { 'liuhe': 15, 'sanhe': 12, 'same': 5, 'none': 0, 'chong': -15, 'xing': -10, 'hai': -8 }[rel4.key];
+    add('日支夫妻宫', '日支 ' + pA.dayZhi + ' 与 ' + pB.dayZhi + '：' + rel4.label, s4);
+
+    // 5. 年柱纳音五行
+    var naA = pA.naYin.year, naB = pB.naYin.year;
+    // 纳音五行取名称末字（如 山头火→火）
+    var nwxA = naA.charAt(naA.length - 1), nwxB = naB.charAt(naB.length - 1);
+    var rel5 = wuxingRelation(nwxA, nwxB);
+    var s5 = { '我生对方': 8, '对方生我': 8, '比和': 5, '我克对方': 3, '对方克我': -5 }[rel5] || 0;
+    add('纳音五行', naA + ' 与 ' + naB + '：' + rel5, s5);
+
+    // 6. 生肖桃花/红鸾互见（乙方桃花支落在甲方命中）
+    [pA, pB].forEach(function (p, i) {
+      var other = (i === 0) ? pB : pA;
+      if (p.taohua.length) {
+        var hit = p.taohua.some(function (t) { return other.gz.year.charAt(1) === t || other.gz.day.charAt(1) === t; });
+        if (hit) add('桃花互见', (i === 0 ? '甲方' : '乙方') + '命中桃花与对方年/日支相合', 6);
+      }
+    });
+
+    var total = items.reduce(function (sum, it) { return sum + it.score; }, 50); // 基础分 50
+    total = Math.max(5, Math.min(99, total));
+    var grade = total >= 80 ? '天作之合' : total >= 65 ? '良缘可期' : total >= 50 ? '缘份中等' : '需要用心经营';
+    return { total: total, grade: grade, items: items };
+  }
+
+  /* ---------- 单人姻缘要点 ---------- */
+  function singlePoints(p) {
+    var pts = [];
+    var genderTxt = p.gender === '男' ? '财星（妻星）' : '官星（夫星）';
+    pts.push({ label: '配偶星', text: genderTxt + '为「' + p.spouseStar.wx + '」，命中 ' + (p.spouseStar.hits.length ? p.spouseStar.hits.join('、') : '未见于天干地支') });
+    var rel = wuxingRelation(p.dayWuxing, ZHI_WUXING[p.dayZhi]);
+    var relTxt = { '我生对方': '日主生配偶宫，对另一半体贴付出', '对方生我': '配偶宫生日主，易得另一半滋养', '比和': '与日主同气，性情相近', '我克对方': '日主克配偶宫，在关系中偏主导', '对方克我': '配偶宫克日主，受另一半影响较深' }[rel] || '';
+    pts.push({ label: '日支配偶宫', text: '日支「' + p.dayZhi + '」（' + ZHI_WUXING[p.dayZhi] + '）为配偶宫，' + relTxt });
+    pts.push({ label: '桃花', text: p.taohua.length ? '命中带咸池桃花（' + p.taohua.join('、') + '），异性缘旺' : '四柱未见明显咸池桃花' });
+    pts.push({ label: '红鸾天喜', text: '红鸾在' + p.hongluan + '、天喜在' + p.tianxi + '，流年逢之多主婚恋喜事' });
+    return pts;
+  }
+
+  return {
+    paipan: paipan, ziweiSpouse: ziweiSpouse, matchScore: matchScore, singlePoints: singlePoints,
+    zhiRelation: zhiRelation, wuxingRelation: wuxingRelation,
+    GAN_WUXING: GAN_WUXING, ZHI_WUXING: ZHI_WUXING
+  };
+})();
+window.__engine = Engine;
+
+/* ================================================================
+ *  UI 层
+ * ================================================================ */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+
+  // 时辰下拉
+  var HOURS = [];
+  for (var i = 0; i <= 23; i++) HOURS.push(i);
+  function fillHours(sel) {
+    var html = '<option value="-1">时辰未知</option>';
+    HOURS.forEach(function (h) {
+      html += '<option value="' + h + '">' + h + ':00 - ' + h + ':59</option>';
+    });
+    sel.innerHTML = html;
+    sel.value = '14';
+  }
+  ['m-a-hour', 'm-b-hour', 's-hour'].forEach(function (id) { fillHours($(id)); });
+
+  // Tab 切换
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      $('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  /* ---------- 设置 ---------- */
+  var cfg = JSON.parse(localStorage.getItem('yinyuan_cfg') || '{}');
+  $('cfg-url').value = cfg.url || '';
+  $('cfg-key').value = cfg.key || '';
+  $('cfg-model').value = cfg.model || '';
+  function saveCfg() {
+    cfg = { url: $('cfg-url').value.trim().replace(/\/+$/, ''), key: $('cfg-key').value.trim(), model: $('cfg-model').value.trim() };
+    localStorage.setItem('yinyuan_cfg', JSON.stringify(cfg));
+    $('cfg-status').textContent = '✓ 已保存';
+    setTimeout(function () { $('cfg-status').textContent = ''; }, 2000);
+  }
+  $('btn-save').addEventListener('click', saveCfg);
+  $('btn-test').addEventListener('click', function () {
+    saveCfg();
+    var st = $('cfg-status'); st.className = 'status'; st.textContent = '测试中…';
+    fetch(cfg.url + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: '你好' }], max_tokens: 5 })
+    }).then(function (r) {
+      if (r.ok) { st.textContent = '✓ 连接成功'; }
+      else { st.className = 'status err'; st.textContent = '✗ HTTP ' + r.status; }
+    }).catch(function (e) { st.className = 'status err'; st.textContent = '✗ ' + e.message; });
+  });
+
+  /* ---------- LLM 流式调用 ---------- */
+  var currentAbort = null;
+  function askLLM(contextData, question, outputEl, statusEl, doneCb) {
+    if (!cfg.url || !cfg.model) {
+      statusEl.className = 'status err';
+      statusEl.textContent = '未配置 API，请先到「API 设置」填写接口地址与模型名（确定性排盘与打分不受影响）。';
+      return;
+    }
+    statusEl.className = 'status'; statusEl.textContent = '正在请求模型…';
+    var system = '你是精通八字命理与紫微斗数的姻缘分析师。用户会给你一份由程序确定性排盘并按传统规则打分的数据，请基于这些数据解读，禁止编造或修改任何干支、星曜数据。语言自然通俗、有温度，避免危言耸听，结尾给出积极务实的建议。用 Markdown 格式输出，篇幅 500-800 字。开头声明内容仅供娱乐参考。';
+    var body = {
+      model: cfg.model, stream: true, temperature: 0.7,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: question + '\n\n【排盘数据（JSON）】\n' + JSON.stringify(contextData, null, 1) }
+      ]
+    };
+    currentAbort = new AbortController();
+    outputEl.innerHTML = '';
+    fetch(cfg.url + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+      body: JSON.stringify(body),
+      signal: currentAbort.signal
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+      var reader = res.body.getReader(), dec = new TextDecoder(), buf = '', raw = '';
+      function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) {
+            statusEl.textContent = '✓ 分析完成';
+            if (doneCb) doneCb();
+            return;
+          }
+          buf += dec.decode(r.value, { stream: true });
+          var lines = buf.split('\n'); buf = lines.pop();
+          lines.forEach(function (line) {
+            line = line.trim();
+            if (!line || line.indexOf('data:') !== 0) return;
+            var payload = line.slice(5).trim();
+            if (payload === '[DONE]') return;
+            try {
+              var j = JSON.parse(payload);
+              var delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+              if (delta) { raw += delta; outputEl.innerHTML = miniMD(raw) + '<span class="cursor"></span>'; }
+            } catch (e) { /* 忽略不完整行 */ }
+          });
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(function (e) {
+      if (e.name === 'AbortError') { statusEl.textContent = '已停止'; }
+      else { statusEl.className = 'status err'; statusEl.textContent = '请求失败：' + e.message; }
+    });
+  }
+
+  // 极简 Markdown 渲染
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function miniMD(md) {
+    var lines = esc(md).split('\n'), out = [], inUL = false;
+    lines.forEach(function (ln) {
+      ln = ln.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      if (/^#{1,4}\s/.test(ln)) {
+        if (inUL) { out.push('</ul>'); inUL = false; }
+        out.push('<h3>' + ln.replace(/^#{1,4}\s*/, '') + '</h3>');
+      } else if (/^[-*]\s/.test(ln)) {
+        if (!inUL) { out.push('<ul>'); inUL = true; }
+        out.push('<li>' + ln.replace(/^[-*]\s*/, '') + '</li>');
+      } else if (ln.trim() === '') {
+        if (inUL) { out.push('</ul>'); inUL = false; }
+      } else {
+        if (inUL) { out.push('</ul>'); inUL = false; }
+        out.push('<p>' + ln + '</p>');
+      }
+    });
+    if (inUL) out.push('</ul>');
+    return out.join('');
+  }
+
+  /* ---------- 公共渲染 ---------- */
+  function baziCard(p, name) {
+    var cols = [['年', p.gz.year, p.naYin.year], ['月', p.gz.month, p.naYin.month], ['日', p.gz.day, p.naYin.day], ['时', p.gz.time, p.naYin.time]];
+    return '<div class="card"><h3>' + esc(name) + ' · 八字盘（' + p.solar + ' · ' + p.zodiac + ' · ' + p.gender + '）</h3>' +
+      '<div class="bazi-grid">' + cols.map(function (c) {
+        return '<div class="bazi-col"><div class="tag">' + c[0] + '柱</div><div class="gz">' + c[1] + '</div><div class="ny">' + c[2] + '</div></div>';
+      }).join('') + '</div>' +
+      (p.hourKnown ? '' : '<div class="hint">※ 时辰未知，时柱按午时（12:00）暂代，仅供参考；日柱年柱准确。</div>') +
+      '</div>';
+  }
+  function ziweiCard(zw, name) {
+    return '<div class="card"><h3>' + esc(name) + ' · 紫微夫妻宫（' + zw.fiveElements + ' · 命主' + zw.soul + '）</h3>' +
+      '<div class="kv"><b>主星：</b>' + (zw.spouse.major.join('、') || '无主星') + '</div>' +
+      (zw.spouse.minor.length ? '<div class="kv"><b>辅星：</b>' + zw.spouse.minor.join('、') + '</div>' : '') +
+      '</div>';
+  }
+  function readPerson(prefix) {
+    var y = parseInt($(prefix + '-year').value, 10), m = parseInt($(prefix + '-month').value, 10), d = parseInt($(prefix + '-day').value, 10);
+    if (!(y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) throw new Error('日期不合法，请检查年月日');
+    var dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) throw new Error('日期不存在，请检查');
+    return {
+      name: $(prefix + '-name').value.trim() || ($(prefix + '-gender').value === '男' ? '男方' : '女方'),
+      gender: $(prefix + '-gender').value,
+      hour: parseInt($(prefix + '-hour').value, 10),
+      y: y, m: m, d: d
+    };
+  }
+
+  /* ---------- 合婚 ---------- */
+  $('btn-match').addEventListener('click', function () {
+    var out = $('match-result');
+    try {
+      var a = readPerson('m-a'), b = readPerson('m-b');
+      var pA = Engine.paipan(a.y, a.m, a.d, a.hour, a.gender);
+      var pB = Engine.paipan(b.y, b.m, b.d, b.hour, b.gender);
+      var zwA = Engine.ziweiSpouse(a.y, a.m, a.d, a.hour, a.gender);
+      var zwB = Engine.ziweiSpouse(b.y, b.m, b.d, b.hour, b.gender);
+      var score = Engine.matchScore(pA, pB);
+      renderMatch(a, b, pA, pB, zwA, zwB, score);
+    } catch (e) {
+      out.innerHTML = '<div class="card"><span class="status err">输入有误：' + esc(e.message) + '</span></div>';
+    }
+  });
+
+  function renderMatch(a, b, pA, pB, zwA, zwB, score) {
+    var color = score.total >= 65 ? 'var(--good)' : score.total >= 50 ? 'var(--mid)' : 'var(--bad)';
+    var rows = score.items.map(function (it) {
+      var cls = it.score > 0 ? 'pos' : it.score < 0 ? 'neg' : '';
+      return '<tr><td>' + it.cat + '</td><td>' + it.desc + '</td><td class="' + cls + '">' + (it.score > 0 ? '+' : '') + it.score + '</td></tr>';
+    }).join('');
+    var ctx = {
+      mode: '双人合婚',
+      甲方: { 姓名: a.name, 性别: a.gender, 出生: pA.solar, 八字: pA.gz, 纳音: pA.naYin, 生肖: pA.zodiac, 日主: pA.dayGan + '(' + pA.dayWuxing + ')', 紫微夫妻宫: zwA.spouse },
+      乙方: { 姓名: b.name, 性别: b.gender, 出生: pB.solar, 八字: pB.gz, 纳音: pB.naYin, 生肖: pB.zodiac, 日主: pB.dayGan + '(' + pB.dayWuxing + ')', 紫微夫妻宫: zwB.spouse },
+      算法得分: { 总分: score.total, 评级: score.grade, 明细: score.items }
+    };
+    $('match-result').innerHTML =
+      '<div class="card score-wrap">' +
+        '<div class="score-num">' + score.total + '<small> / 100</small></div>' +
+        '<div class="score-label" style="color:' + color + '">' + score.grade + '</div>' +
+        '<div class="score-bar"><i style="width:0%"></i></div>' +
+      '</div>' +
+      '<div class="card"><h3>合婚明细</h3><table class="detail"><tr><th>项目</th><th>说明</th><th>加减</th></tr>' + rows + '</table>' +
+        '<div class="hint">基础分 50，按传统合婚规则加减。评分基于公开的干支合冲规则，确定性计算、可复现。</div></div>' +
+      baziCard(pA, a.name) + baziCard(pB, b.name) +
+      ziweiCard(zwA, a.name) + ziweiCard(zwB, b.name) +
+      '<div class="card"><h3>AI 姻缘解读 <button class="btn btn-ghost" id="btn-stop-match" style="float:right">停止</button></h3>' +
+        '<div class="llm-output" id="llm-match"></div><div class="status" id="st-match"></div></div>';
+    requestAnimationFrame(function () {
+      var bar = document.querySelector('#match-result .score-bar i');
+      if (bar) bar.style.width = score.total + '%';
+    });
+    $('btn-stop-match').addEventListener('click', function () { if (currentAbort) currentAbort.abort(); });
+    askLLM(ctx, '请为 ' + a.name + '（' + a.gender + '）与 ' + b.name + '（' + b.gender + '）做合婚解读：先总评算法得分与评级，再从生肖年支、日主五行、日支夫妻宫、纳音、双方紫微夫妻宫星曜几个维度逐条分析相处之道，最后给出 2-3 条务实建议。',
+      $('llm-match'), $('st-match'));
+  }
+
+  /* ---------- 单人 ---------- */
+  $('btn-single').addEventListener('click', function () {
+    var out = $('single-result');
+    try {
+      var s = readPerson('s');
+      var p = Engine.paipan(s.y, s.m, s.d, s.hour, s.gender);
+      var zw = Engine.ziweiSpouse(s.y, s.m, s.d, s.hour, s.gender);
+      var pts = Engine.singlePoints(p);
+      renderSingle(s, p, zw, pts);
+    } catch (e) {
+      out.innerHTML = '<div class="card"><span class="status err">输入有误：' + esc(e.message) + '</span></div>';
+    }
+  });
+
+  function renderSingle(s, p, zw, pts) {
+    var ctx = {
+      mode: '单人姻缘分析',
+      本人: { 姓名: s.name, 性别: s.gender, 出生: p.solar, 八字: p.gz, 纳音: p.naYin, 生肖: p.zodiac, 日主: p.dayGan + '(' + p.dayWuxing + ')', 配偶星: p.spouseStar, 桃花: p.taohua, 红鸾: p.hongluan, 天喜: p.tianxi, 紫微夫妻宫: zw.spouse }
+    };
+    $('single-result').innerHTML =
+      baziCard(p, s.name) +
+      '<div class="card"><h3>姻缘要点</h3>' + pts.map(function (pt) {
+        return '<div class="kv"><b>【' + pt.label + '】</b>' + pt.text + '</div>';
+      }).join('') + '</div>' +
+      ziweiCard(zw, s.name) +
+      '<div class="card"><h3>AI 姻缘解读 <button class="btn btn-ghost" id="btn-stop-single" style="float:right">停止</button></h3>' +
+        '<div class="llm-output" id="llm-single"></div><div class="status" id="st-single"></div></div>';
+    $('btn-stop-single').addEventListener('click', function () { if (currentAbort) currentAbort.abort(); });
+    askLLM(ctx, '请分析 ' + s.name + '（' + s.gender + '）的姻缘运势：从配偶星、日支配偶宫、桃花红鸾、紫微夫妻宫星曜几个维度解读 TA 的婚恋特质、容易遇到什么样的另一半、姻缘时机上有什么提示，最后给出 2-3 条务实的建议。',
+      $('llm-single'), $('st-single'));
+  }
+
+  /* ---------- 自测钩子（?test=1） ---------- */
+  window.__runSelfTest = function () {
+    var pre = $('selftest');
+    pre.style.display = 'block';
+    var lines = [];
+    try {
+      var pA = Engine.paipan(1995, 8, 15, 14, '男');
+      var pB = Engine.paipan(1997, 3, 8, 10, '女');
+      lines.push('MARK bazi_a=' + JSON.stringify([pA.gz.year, pA.gz.month, pA.gz.day, pA.gz.time]));
+      lines.push('MARK zodiac_a=' + JSON.stringify(pA.zodiac));
+      lines.push('MARK dayGan_a=' + JSON.stringify(pA.dayGan));
+      lines.push('MARK taohua_a=' + JSON.stringify(pA.taohua));
+      var sc = Engine.matchScore(pA, pB);
+      lines.push('MARK match_total=' + sc.total);
+      lines.push('MARK match_grade=' + JSON.stringify(sc.grade));
+      var zw = Engine.ziweiSpouse(1995, 8, 15, 14, '女');
+      lines.push('MARK spouse_stars=' + JSON.stringify(zw.spouse.major));
+      // 断言
+      var expect = [
+        ['bazi_a', ['乙亥', '甲申', '戊寅', '己未']],
+        ['zodiac_a', '猪'], ['dayGan_a', '戊']
+      ];
+      var ok = true;
+      expect.forEach(function (e) {
+        var got = lines.filter(function (l) { return l.indexOf('MARK ' + e[0] + '=') === 0; })[0];
+        var v = JSON.parse(got.split('=').slice(1).join('='));
+        if (JSON.stringify(v) !== JSON.stringify(e[1])) { ok = false; lines.push('FAIL ' + e[0] + ' got ' + JSON.stringify(v)); }
+      });
+      if (typeof sc.total !== 'number' || sc.total < 5 || sc.total > 99) { ok = false; lines.push('FAIL total range'); }
+      lines.push(ok ? 'MARK selftest=PASS' : 'MARK selftest=FAIL');
+    } catch (e) {
+      lines.push('MARK selftest=FAIL ' + e.message);
+    }
+    pre.textContent = lines.join('\n');
+  };
+
+  if (location.search.indexOf('test=1') > -1) {
+    if (document.readyState === 'complete') window.__runSelfTest();
+    else window.addEventListener('load', window.__runSelfTest);
+  }
+})();
+</script>
+</body>
+</html>
